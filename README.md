@@ -2,7 +2,7 @@
 Teleport is available in two editions: community and enterprise edition. We will be using the community edition in this example setup.
 
 Teleport can help you to securely access the Linux servers via SSH : </br>
-1. Server Access: Single Sign-On, short-lived certificates, and audit for SSH servers.
+      Server Access: Single Sign-On, short-lived certificates, and audit for SSH servers.
 
 ### Install Teleport on Linux:-
 In this example tutorial, we are using an Amazon linux image for EC2 instance. Hence, to install Teleport on AWS Linux server;
@@ -19,55 +19,55 @@ Teleport uses TLS to provide secure access to its Proxy Service and Auth Service
 ### Step-2:- 
 1. Set DNS resolvable hostnames for Teleport Server
 
-Check Host Name
+#### Check Host Name
 
-# hostname
+     hostname
 
-Set Hostname for that teleport server
+#### Set Hostname for that teleport server
 
-# hostnamectl set-hostname <dns name of that server(Ex:-teleport.eapi.nonprod.nb01.local)>
+     hostnamectl set-hostname <dns name of that server(Ex:-teleport.eapi.nonprod.nb01.local)>
 
-Set private IP in Hosts file with maping DNS name
+#### Set private IP in Hosts file with maping DNS name
 
-# echo "10.42.55.21 teleport.eapi.nonprod.nb01.local teleport" >> /etc/hosts
+     echo "10.42.55.21 teleport.eapi.nonprod.nb01.local teleport" >> /etc/hosts
 
-Check the entry for verify the hosts file
+#### Check the entry for verify the hosts file
 
-# cat /etc/hosts
+     cat /etc/hosts
   If there is not available public SSL certificate, then need to Generate self-signed SSL/TLS certificates for Teleport Server
 
 ### NOTE: 
   **The certificate must have a subject that corresponds to the domain of your Teleport host, e.g., teleport.db2-serv.com. Replace the domain names accordingly.**
 
-## Self-sign certificate:-
+### Self-sign certificate:-
 
-openssl req -x509 -nodes -newkey rsa:4096 \
+     openssl req -x509 -nodes -newkey rsa:4096 \
 
--keyout /var/lib/teleport/teleport.key \
+     -keyout /var/lib/teleport/teleport.key \
 
--out /var/lib/teleport/teleport.pem -sha256 -days 3650 \
+     -out /var/lib/teleport/teleport.pem -sha256 -days 3650 \
 
--subj "/C=US/ST=N.virginia/L=N.virginia/O=FIS/OU=Org/CN=teleport.db2-serv.com"
+     -subj "/C=US/ST=N.virginia/L=N.virginia/O=FIS/OU=Org/CN=teleport.db2-serv.com"
 
 
 ### Step-3:-
 Install and setup Teleport Configuration file
 
-# yum update
+      yum update
 
-Add repo for teleport
+#### Add repo for teleport
 
-# yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo
+      yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo
 
-Install Teleport
+#### Install Teleport
 
-# yum install teleport
+      yum install teleport
 
 Generate Teleport Configuration file
 
 Once you have setup the domain name and generates the SSL certs, run the command below to generate Teleport configuration file.
 
-      teleport configure -o /etc/teleport.yaml  \
+     teleport configure -o /etc/teleport.yaml  \
 
      --cluster-name=teleport.eapi.nonprod.nb01.local \
 
@@ -79,9 +79,9 @@ Once you have setup the domain name and generates the SSL certs, run the command
 
 Check the configuration file for teleport server & verify the key name and dns name.
 
-# cat /etc/teleport.yaml
+### cat /etc/teleport.yaml
 
-### Example of YAML file:
+#### Example of YAML file:
 
 -----------------
 
@@ -146,23 +146,23 @@ proxy_service:
   acme: {}
 
 ---------------------------------------
-you can test its validity using the --test option
+#### you can test its validity using the --test option
 
-# teleport configure --test /etc/teleport.yaml
+     teleport configure --test /etc/teleport.yaml
 
-Start Teleport Service
+#### Start Teleport Service
 
-# systemctl enable --now teleport
+     systemctl enable --now teleport
 
-Check the status of Teleport service
+#### Check the status of Teleport service
 
-# systemctl status teleport
+     systemctl status teleport
 
 ### Step-4:-
 
-Create Teleport Admin User
+#### Create Teleport Admin User
 
-# tctl users add teleport-admin --roles=editor,access --logins=root,ec2-user
+     tctl users add teleport-admin --roles=editor,access --logins=root,ec2-user
 
 Sample command output;
 
@@ -172,7 +172,8 @@ https://teleport.eapi.nonprod.nb01.local:443/web/invite/1c2fd60cad32df99a65b7508
 
 
 
-NOTE: Make sure teleport.eapi.nonprod.nb01.local.com:443 points at a Teleport proxy which users can access.
+### NOTE: 
+**Make sure teleport.eapi.nonprod.nb01.local.com:443 points at a Teleport proxy which users can access.**
 
 
 
@@ -192,30 +193,30 @@ You can now proceed to add servers for secure access to the Teleport access plan
 
 Copy certificate file from one ec2 instance to another ec2 instance
 
-# scp -i xyz.pem ec2-user@10.42.55.51:/home/ec2-user/teleport.eapi.nonprod.nb01.local.zip .
-# cp teleport.eapi.nonprod.nb01.local.zip /etc/pki/ca-trust/extracted/pem/
-copy certificate file
-# cp teleport.eapi.nonprod.nb01.local.zip /usr/share/pki/ca-trust-source/anchors
-copy certificate file
-# cd /etc/pki/ca-trust/extracted/pem/
-copy .cert file content to tls-ca-bundle.pem
+     scp -i xyz.pem ec2-user@10.42.55.51:/home/ec2-user/teleport.eapi.nonprod.nb01.local.zip .
+     cp teleport.eapi.nonprod.nb01.local.zip /etc/pki/ca-trust/extracted/pem/
+#### copy certificate file
+     cp teleport.eapi.nonprod.nb01.local.zip /usr/share/pki/ca-trust-source/anchors
+#### copy certificate file
+     cd /etc/pki/ca-trust/extracted/pem/
+     copy .cert file content to tls-ca-bundle.pem
 
-# update-ca-trust
+#### update-ca-trust
 
-single command automaticaly:
+  single command automaticaly:
 
-sudo bash -c "$(curl -kfsSL https://teleport.eapi.nonprod.nb01.local/scripts/0261d6444c72c9cd2fa468045c733ccc/install-node.sh)"
+     sudo bash -c "$(curl -kfsSL https://teleport.eapi.nonprod.nb01.local/scripts/0261d6444c72c9cd2fa468045c733ccc/install-node.sh)"
 
- ## Manualy:
- hostnamectl set-hostname db2-server-3
-# hostname
-# echo "10.42.55.21 teleport.eapi.nonprod.nb01.local teleport" >> /etc/hosts
-# yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo
-# yum install teleport
-Create teleport.yaml file in node system
-# vi /etc/teleport.yaml
+### Manualy:
+     hostnamectl set-hostname db2-server-3
+     hostname
+     echo "10.42.55.21 teleport.eapi.nonprod.nb01.local teleport" >> /etc/hosts
+     yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo
+     yum install teleport
+#### Create teleport.yaml file in node system
+     vi /etc/teleport.yaml
 
-### replace the token_name & ca_pin.
+#### replace the token_name & ca_pin.
 ---------------------------
 version: v2
 teleport:
@@ -249,17 +250,17 @@ https_keypairs: []
 acme: {}
 ----------------------
 
-you can test its validity using the --test option
+#### you can test its validity using the --test option
 
-# teleport configure --test /etc/teleport.yaml
+     teleport configure --test /etc/teleport.yaml
 
-Start Teleport Service
+#### Start Teleport Service
 
-# systemctl enable --now teleport
+     systemctl enable --now teleport
 
-Check the status of Teleport service
+#### Check the status of Teleport service
 
-# systemctl status teleport
+     systemctl status teleport
 
 Now you can verify the added server in Teleport Server Dashboard.
 
