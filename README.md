@@ -67,7 +67,7 @@ Generate Teleport Configuration file
 
 Once you have setup the domain name and generates the SSL certs, run the command below to generate Teleport configuration file.
 
-# teleport configure -o /etc/teleport.yaml  \
+      teleport configure -o /etc/teleport.yaml  \
 
      --cluster-name=teleport.eapi.nonprod.nb01.local \
 
