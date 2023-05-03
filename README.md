@@ -1,5 +1,3 @@
-Use the default branch jenkins_pipeline if you dont want to install prometheus and grafana. use prom_graphana branch if you wanna install prometheus and grafana.
-
 # TELEPORT Install & Setup :-
 Teleport is available in two editions: community and enterprise edition. We will be using the community edition in this example setup.
 
