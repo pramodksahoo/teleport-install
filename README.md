@@ -1,8 +1,10 @@
-# TELEPORT Install & Setup :-
+# TELEPORT Installation and Setup Guide :-
 Teleport is available in two editions: community and enterprise edition. We will be using the community edition in this example setup.
 
 Teleport can help you to securely access the Linux servers via SSH : </br>
       Server Access: Single Sign-On, short-lived certificates, and audit for SSH servers.
+
+This guide provides instructions for installing and setting up Teleport, a tool that enables secure access to Linux servers via SSH. Teleport is available in two editions: community and enterprise. This guide focuses on setting up the community edition.
 
 ### Install Teleport on Linux:-
 In this example tutorial, we are using an Amazon linux image for EC2 instance. Hence, to install Teleport on AWS Linux server;
