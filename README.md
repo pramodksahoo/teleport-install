@@ -209,5 +209,8 @@ proxy_service:
 
 Verify the node in the Teleport dashboard. Connect via SSH: Click "Connect" and select a user.
 
-For production: Label nodes appropriately, enable session recording, and integrate with monitoring tools. If scaling, consider Enterprise for advanced features like high availability.
+Also you can verify this client connection on Teleport Dashboard:
+>![Teleport Dashboard](Teleport-dashboard.png) 
+
+For **Production**: Label nodes appropriately, enable session recording, and integrate with monitoring tools. If scaling, consider Enterprise for advanced features like high availability.
 
