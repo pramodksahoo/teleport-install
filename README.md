@@ -1,270 +1,213 @@
-# TELEPORT Installation and Setup Guide :-
-Teleport is available in two editions: community and enterprise edition. We will be using the community edition in this example setup.
+# Teleport Installation and Setup Guide:-
 
-Teleport can help you to securely access the Linux servers via SSH : </br>
-      Server Access: Single Sign-On, short-lived certificates, and audit for SSH servers.
+Teleport is an open-source tool for secure access to infrastructure, available in Community and Enterprise editions. This guide focuses on the Community Edition for setting up secure SSH access to Linux servers, with features like single sign-on, short-lived certificates, and auditing.
 
-This guide provides instructions for installing and setting up Teleport, a tool that enables secure access to Linux servers via SSH. Teleport is available in two editions: community and enterprise. This guide focuses on setting up the community edition.
+## 🧰 Architecture Overview
 
-### Install Teleport on Linux:-
-In this example tutorial, we are using an Amazon linux image for EC2 instance. Hence, to install Teleport on AWS Linux server;
+>![Teleport Architecture](teleport-digram.svg) *Teleport Cluster Setup*
 
-### Step-1:-
-1. - Spin-up EC2 instance on AWS console : Note the Private IP of the instance
+For a **production setup**, adhere to best practices to enhance security and reliability:
 
-2. Open an SSH port in addition port 443 in SG group for that EC2 instance
+- Avoid using `sudo` unless necessary; create non-root users for experimentation.
+- Run Teleport services as non-root users where possible (SSH service requires root or `CAP_NET_BIND_SERVICE` capability for ports <1024).
+- Follow the principle of least privilege: Assign minimal roles and use Access Requests for temporary elevations.
+- Use proper TLS certificates (avoid self-signed; prefer ACME/Let's Encrypt for automatic renewal).
+- Implement high availability with multiple Auth and Proxy nodes, load balancers, and shared backends like etcd.
+- Enable multi-factor authentication (MFA) and per-session MFA for added security.
+- Save sensitive tokens to files instead of entering them on the command line to prevent exposure.
+- Monitor logs and enable debug mode if troubleshooting is needed.
+- Ensure DNS resolution, firewall rules, and ports (e.g., 3023-3025, 3080, 443) are configured for production scalability.
 
-3. Login to EC2 Instance :
+This guide assumes an AWS EC2 instance with Amazon Linux, but adapt for your environment. Replace example domains (e.g., `teleport.example.com`) with your own.
 
-Teleport uses TLS to provide secure access to its Proxy Service and Auth Service, and this requires a domain name that clients can use to verify Teleport's certificate
+## Prerequisites
 
-### Step-2:- 
-1. Set DNS resolvable hostnames for Teleport Server
-
-#### Check Host Name
-
-     hostname
-
-#### Set Hostname for that teleport server
-
-     hostnamectl set-hostname <dns name of that server(Ex:-teleport.eapi.nonprod.nb01.local)>
-
-#### Set private IP in Hosts file with maping DNS name
-
-     echo "10.42.55.21 teleport.eapi.nonprod.nb01.local teleport" >> /etc/hosts
-
-#### Check the entry for verify the hosts file
-
-     cat /etc/hosts
-  If there is not available public SSL certificate, then need to Generate self-signed SSL/TLS certificates for Teleport Server
-
-### NOTE: 
-  **The certificate must have a subject that corresponds to the domain of your Teleport host, e.g., teleport.db2-serv.com. Replace the domain names accordingly.**
-
-### Self-sign certificate:-
-
-     openssl req -x509 -nodes -newkey rsa:4096 \
-
-     -keyout /var/lib/teleport/teleport.key \
-
-     -out /var/lib/teleport/teleport.pem -sha256 -days 3650 \
-
-     -subj "/C=US/ST=N.virginia/L=N.virginia/O=FIS/OU=Org/CN=teleport.db2-serv.com"
+- 🔑 A domain name for Teleport (e.g., `teleport.example.com`) with DNS A records pointing to your server's IP.
+- 🔒 Valid TLS certificates (use ACME in config for auto-renewal; self-signed only for testing).
+- 🛡️ Open ports: 443 (HTTPS), 3023-3025 (internal), and SSH (22) in security groups.
+- 📦 Amazon Linux EC2 instance with root access.
+- ⚠️ For production: Backup configurations, enable logging to a central system, and test in a staging environment first.
 
 
-### Step-3:-
-Install and setup Teleport Configuration file
+## Step 1: Prepare the EC2 Instance
 
-      yum update
+1. 🚀 Spin up an EC2 instance on the AWS console and note its private IP.
+2. 🔓 Open ports 22 (SSH) and 443 (HTTPS) in the security group.
+3. 🔑 Log in to the EC2 instance via SSH.
 
-#### Add repo for teleport
+Teleport requires TLS for secure Proxy and Auth services, so ensure a resolvable domain for certificate verification.
 
-      yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo
+## Step 2: Configure Hostname and Certificates
 
-#### Install Teleport
+1. 📛 Set DNS-resolvable hostname for the Teleport server:
+    - Check current hostname: `hostname`
+    - Set hostname: `hostnamectl set-hostname teleport.example.com`
+    - Map private IP to DNS in hosts file: `echo "10.42.55.21 teleport.example.com teleport" >> /etc/hosts`
+    - Verify: `cat /etc/hosts`
 
-      yum install teleport
+If no public SSL certificate is available, generate a self-signed one (not recommended for production; use ACME instead).
 
-Generate Teleport Configuration file
+**Note:** Certificates must match your domain (e.g., `teleport.example.com`). Replace details accordingly.
 
-Once you have setup the domain name and generates the SSL certs, run the command below to generate Teleport configuration file.
+Generate self-signed certificate (for testing only):
 
-     teleport configure -o /etc/teleport.yaml  \
+```
+openssl req -x509 -nodes -newkey rsa:4096 \
+  -keyout /var/lib/teleport/teleport.key \
+  -out /var/lib/teleport/teleport.pem -sha256 -days 3650 \
+  -subj "/C=US/ST=Virginia/L=Virginia/O=Org/OU=Dept/CN=teleport.example.com"
+```
 
-     --cluster-name=teleport.eapi.nonprod.nb01.local \
+For production, enable ACME in the config for automatic certificates from Let's Encrypt.
 
-     --public-addr=teleport.eapi.nonprod.nb01.local:443 \
+## Step 3: Install and Configure Teleport
 
-     --cert-file=/var/lib/teleport/teleport.eapi.nonprod.nb01.local-chain.pem \
+1. 🔄 Update the system: `yum update`
+2. 📦 Add Teleport repository: `yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo`
+3. 🛠️ Install Teleport: `yum install teleport`
 
-     --key-file=/var/lib/teleport/teleport.eapi.nonprod.nb01.local.key
+Generate configuration file (after setting domain and certs):
 
-Check the configuration file for teleport server & verify the key name and dns name.
+```
+teleport configure -o /etc/teleport.yaml \
+  --cluster-name=teleport.example.com \
+  --public-addr=teleport.example.com:443 \
+  --cert-file=/var/lib/teleport/teleport.pem \
+  --key-file=/var/lib/teleport/teleport.key
+```
 
-### cat /etc/teleport.yaml
+Verify configuration:
 
-#### Example of YAML file:
+- Check file: `cat /etc/teleport.yaml`
+- Test validity: `teleport configure --test /etc/teleport.yaml`
 
------------------
+**Example YAML (customize for production: enable MFA, adjust logging severity to DEBUG if needed)[^1][^6]:**
 
+```
 version: v2
-
 teleport:
-
-  nodename: teleport.eapi.nonprod.nb01.local
-
+  nodename: teleport.example.com
   data_dir: /var/lib/teleport
-
   log:
-
     output: stderr
-
     severity: INFO
-
     format:
-
       output: text
-
   ca_pin: ""
-
   diag_addr: ""
-
 auth_service:
-
   enabled: "yes"
-
   listen_addr: 0.0.0.0:3025
-
-  cluster_name: teleport.eapi.nonprod.nb01.local
-
+  cluster_name: teleport.example.com
   proxy_listener_mode: multiplex
-
 ssh_service:
-
   enabled: "yes"
-
   commands:
-
   - name: hostname
-
     command: [hostname]
-
     period: 1m0s
-
 proxy_service:
-
   enabled: "yes"
-
   web_listen_addr: 0.0.0.0:443
-
-  public_addr: teleport.eapi.nonprod.nb01.local:443
-
+  public_addr: teleport.example.com:443
   https_keypairs:
-
-  - key_file: /var/lib/teleport/teleport.eapi.nonprod.nb01.local.key
-
-    cert_file: /var/lib/teleport/teleport.eapi.nonprod.nb01.local.pem
-
+  - key_file: /var/lib/teleport/teleport.key
+    cert_file: /var/lib/teleport/teleport.pem
   acme: {}
+```
 
----------------------------------------
-#### you can test its validity using the --test option
+Start and check service:
 
-     teleport configure --test /etc/teleport.yaml
+- 🚀 Enable and start: `systemctl enable --now teleport`
+- ✅ Check status: `systemctl status teleport`
 
-#### Start Teleport Service
+For production: Run as non-root user and monitor with tools like systemd.
 
-     systemctl enable --now teleport
+## Step 4: Create Admin User and Finalize Setup
 
-#### Check the status of Teleport service
+1. 👤 Create Teleport admin user: `tctl users add teleport-admin --roles=editor,access --logins=root,ec2-user`
 
-     systemctl status teleport
+Sample output provides a URL (valid for 1 hour) for password setup, e.g.:
 
-### Step-4:-
+```
+https://teleport.example.com:443/web/invite/xxxxxxxx
+```
 
-#### Create Teleport Admin User
+**Note:** Ensure the domain points to the Teleport proxy. For production, use roles with least privilege and enable MFA.
 
-     tctl users add teleport-admin --roles=editor,access --logins=root,ec2-user
+2. 🌐 Open the URL in a browser, click "Get Started," and create an account.
 
-Sample command output;
+## Step 5: Add Nodes to the Cluster
 
-User "teleport-admin" has been created but requires a password. Share this URL with the user to complete user setup, link is valid for 1h:
+Proceed to enroll additional servers into the Teleport cluster.
 
-https://teleport.eapi.nonprod.nb01.local:443/web/invite/1c2fd60cad32df99a65b75081f78bbda
+### Automated Node Join
 
+1. 📂 Copy certificate from Teleport server to node (adapt paths):
 
+```
+scp -i key.pem ec2-user@10.42.55.21:/path/to/teleport.example.com.pem .
+cp teleport.example.com.pem /etc/pki/ca-trust/extracted/pem/
+cp teleport.example.com.pem /usr/share/pki/ca-trust-source/anchors/
+cd /etc/pki/ca-trust/extracted/pem/
+# Append cert content to tls-ca-bundle.pem if needed
+update-ca-trust
+```
 
-### NOTE: 
-**Make sure teleport.eapi.nonprod.nb01.local.com:443 points at a Teleport proxy which users can access.**
+2. 🤖 Run join script: `sudo bash -c "$(curl -kfsSL https://teleport.example.com/scripts/xxxxxxxx/install-node.sh)"`
 
+### Manual Node Join
 
+1. 📛 Set hostname: `hostnamectl set-hostname node-example`
+2. 🔍 Verify: `hostname`
+3. 📝 Update hosts: `echo "10.42.55.21 teleport.example.com teleport" >> /etc/hosts`
+4. 📦 Add repo and install:
 
-Finalize Teleport Setup on Browser
+```
+yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo
+yum install teleport
+```
 
-You can now access the link provided, which is valid for one hour
+5. ⚙️ Create `/etc/teleport.yaml` on the node (replace token and CA pin):
 
-Open in Browser : https://teleport.eapi.nonprod.nb01.local:443/web/invite/1c2fd60cad32df99a65b75081f78bbda
-
-Click Get Started to create an account
-
-
-### Step-5:-
-You can now proceed to add servers for secure access to the Teleport access plane.
-
-### Node join to Teleport SERVER:-
-
-Copy certificate file from one ec2 instance to another ec2 instance
-
-     scp -i xyz.pem ec2-user@10.42.55.51:/home/ec2-user/teleport.eapi.nonprod.nb01.local.zip .
-     cp teleport.eapi.nonprod.nb01.local.zip /etc/pki/ca-trust/extracted/pem/
-#### copy certificate file
-     cp teleport.eapi.nonprod.nb01.local.zip /usr/share/pki/ca-trust-source/anchors
-#### copy certificate file
-     cd /etc/pki/ca-trust/extracted/pem/
-     copy .cert file content to tls-ca-bundle.pem
-
-#### update-ca-trust
-
-  single command automaticaly:
-
-     sudo bash -c "$(curl -kfsSL https://teleport.eapi.nonprod.nb01.local/scripts/0261d6444c72c9cd2fa468045c733ccc/install-node.sh)"
-
-### Manualy:
-     hostnamectl set-hostname db2-server-3
-     hostname
-     echo "10.42.55.21 teleport.eapi.nonprod.nb01.local teleport" >> /etc/hosts
-     yum-config-manager --add-repo https://rpm.releases.teleport.dev/teleport.repo
-     yum install teleport
-#### Create teleport.yaml file in node system
-     vi /etc/teleport.yaml
-
-#### replace the token_name & ca_pin.
----------------------------
+```
 version: v2
 teleport:
-nodename: db2-server-3
-data_dir: /var/lib/teleport
-join_params:
-token_name: cbd3b85b1d4fd225b4c5b3cf6abb94fb
-method: token
-auth_servers:
-- teleport.db2-serv.com:443
-log:
-output: stderr
-severity: INFO
-format:
-output: text
-ca_pin: sha256:7dd8b268553188b82b09cd00575e9e0e14f0b013ed1e62e0dd31e4a45aa4dd56
-diag_addr: ""
+  nodename: node-example
+  data_dir: /var/lib/teleport
+  join_params:
+    token_name: xxxxxxxx
+    method: token
+  auth_servers:
+  - teleport.example.com:443
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: text
+  ca_pin: sha256:xxxxxxxx
+  diag_addr: ""
 auth_service:
-enabled: "no"
+  enabled: "no"
 ssh_service:
-enabled: "yes"
-labels:
-environment: db2servers
-commands:
-- name: hostname
-command: [hostname]
-period: 1m0s
+  enabled: "yes"
+  labels:
+    environment: production
+  commands:
+  - name: hostname
+    command: [hostname]
+    period: 1m0s
 proxy_service:
-enabled: "no"
-https_keypairs: []
-acme: {}
-----------------------
+  enabled: "no"
+  https_keypairs: []
+  acme: {}
+```
 
-#### you can test its validity using the --test option
+6. ✅ Test config: `teleport configure --test /etc/teleport.yaml`
+7. 🚀 Start service: `systemctl enable --now teleport`
+8. 🔍 Check status: `systemctl status teleport`
 
-     teleport configure --test /etc/teleport.yaml
+Verify the node in the Teleport dashboard. Connect via SSH: Click "Connect" and select a user.
 
-#### Start Teleport Service
+For production: Label nodes appropriately, enable session recording, and integrate with monitoring tools. If scaling, consider Enterprise for advanced features like high availability.
 
-     systemctl enable --now teleport
-
-#### Check the status of Teleport service
-
-     systemctl status teleport
-
-Now you can verify the added server in Teleport Server Dashboard.
-
-
-Click on connect and select user to login the host with ssh.
