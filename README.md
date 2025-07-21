@@ -4,7 +4,7 @@ Teleport is an open-source tool for secure access to infrastructure, available i
 
 ## 🧰 Architecture Overview
 
->![Teleport Architecture](teleport-digram.svg) *Teleport Cluster Setup*
+>![Teleport Architecture](teleport-digram-new.svg) *Teleport Cluster Setup*
 
 For a **production setup**, adhere to best practices to enhance security and reliability:
 
